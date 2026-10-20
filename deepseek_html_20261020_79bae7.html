@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Šifra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0f1220;
+      --bg-gradient-1: #1a1f35;
+      --bg-gradient-2: #0f1220;
+      --card: rgba(255, 255, 255, 0.04);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #e8ebf5;
+      --text-muted: #8b93ab;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --hint-bg: rgba(240, 192, 0, 0.08);
+      --hint-border: #f0c000;
+      --success: #34d399;
+      --success-bg: rgba(52, 211, 153, 0.1);
+      --error: #f87171;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: radial-gradient(ellipse at top, var(--bg-gradient-1) 0%, var(--bg-gradient-2) 60%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 3rem 1rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* --- Puzzle card --- */
+    .puzzle-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2rem 1.75rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow:
+        0 20px 60px -20px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .puzzle {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(1.15rem, 3.2vw, 1.5rem);
+      font-weight: 500;
+      line-height: 1.9;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      text-align: center;
+      margin: 0;
+    }
+
+    .puzzle .op {
+      color: var(--accent-hover);
+      font-weight: 700;
+      padding: 0 0.15em;
+    }
+
+    .puzzle .eq {
+      color: var(--text-muted);
+      padding: 0 0.15em;
+    }
+
+    .puzzle .q {
+      color: var(--accent-hover);
+      font-weight: 700;
+    }
+
+    /* --- Answer row --- */
+    .answer-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 1.75rem;
+      flex-wrap: wrap;
+    }
+
+    .answer-row input[type="text"] {
+      flex: 1 1 140px;
+      min-width: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 500;
+      padding: 0.85rem 1rem;
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+      letter-spacing: 0.05em;
+    }
+
+    .answer-row input[type="text"]::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .answer-row input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .answer-row input[type="text"]:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* --- Buttons --- */
+    button {
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.85rem 1.5rem;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s, background 0.2s, opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+      box-shadow: 0 8px 24px -6px var(--accent-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, var(--accent-hover) 0%, #a78bfa 100%);
+      box-shadow: 0 10px 28px -6px var(--accent-glow);
+    }
+
+    .btn-hint {
+      color: var(--hint-border);
+      background: rgba(240, 192, 0, 0.1);
+      border: 1px solid rgba(240, 192, 0, 0.35);
+    }
+
+    .btn-hint:hover:not(:disabled) {
+      background: rgba(240, 192, 0, 0.18);
+      box-shadow: 0 6px 20px -6px rgba(240, 192, 0, 0.4);
+    }
+
+    /* --- Hint info box --- */
+    .hint-info {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.4rem 1.5rem;
+      font-size: 0.92rem;
+      line-height: 1.65;
+      color: var(--text-muted);
+      animation: fadeUp 0.5s 0.08s ease both;
+    }
+
+    .hint-info h2 {
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text);
+      margin: 0 0 0.75rem;
+    }
+
+    .hint-info p {
+      margin: 0.4rem 0;
+    }
+
+    .hint-info p strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .hint-info .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--hint-border);
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+
+    .hint-info button {
+      margin-top: 1rem;
+      width: 100%;
+    }
+
+    /* --- Hint display --- */
+    .hint-text {
+      padding: 1rem 1.25rem;
+      background: var(--hint-bg);
+      border-left: 3px solid var(--hint-border);
+      border-radius: 4px 12px 12px 4px;
+      font-size: 0.98rem;
+      line-height: 1.6;
+      color: #fde68a;
+      animation: slideIn 0.35s ease both;
+    }
+
+    .hint-text:empty {
+      display: none;
+    }
+
+    .hint-counter {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .hint-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .hint-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      transition: background 0.25s, box-shadow 0.25s;
+    }
+
+    .hint-dots span.used {
+      background: var(--hint-border);
+      box-shadow: 0 0 8px rgba(240, 192, 0, 0.6);
+    }
+
+    /* --- Score --- */
+    .score {
+      font-size: 1.05rem;
+      font-weight: 600;
+      text-align: center;
+      padding: 1rem;
+      border-radius: 12px;
+      background: var(--success-bg);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: var(--success);
+      animation: popIn 0.4s ease both;
+    }
+
+    .score:empty {
+      display: none;
+    }
+
+    .score .big {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+
+    /* --- Animations --- */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes popIn {
+      0%   { opacity: 0; transform: scale(0.92); }
+      60%  { transform: scale(1.02); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @media (max-width: 420px) {
+      body { padding: 1.5rem 0.75rem; }
+      .puzzle-card { padding: 1.5rem 1.15rem; }
+      .hint-info { padding: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="app">
+
+    <section class="puzzle-card">
+      <p class="puzzle">
+        279502 <span class="op">+</span> 7 <span class="eq">=</span> 264338<br>
+        288419 <span class="op">−</span> 3 <span class="eq">=</span> <span class="q">?</span>
+      </p>
+
+      <div class="answer-row">
+        <input type="text" id="answer" placeholder="Tvoje odpověď" autocomplete="off" inputmode="numeric">
+        <button id="check" class="btn-primary">Zkontrolovat</button>
+      </div>
+    </section>
+
+    <section class="hint-info">
+      <h2>Jak fungují nápovědy</h2>
+      <p><span class="dot"></span>Máš k dispozici celkem <strong>10 nápověd</strong>.</p>
+      <p><span class="dot"></span>Za každou použitou nápovědu ztrácíš <strong>1 bod</strong>.</p>
+      <p><span class="dot"></span>Maximální skóre je <strong>10 bodů</strong> (bez nápovědy). Pokud použiješ všech 10 nápověd, získáš <strong>0 bodů</strong>, ale stále můžeš úlohu vyřešit.</p>
+      <p><span class="dot"></span>Po kliknutí na tlačítko „Nápověda“ se objeví potvrzovací okno, které se tě zeptá, zda nápovědu opravdu chceš použít. Teprve po potvrzení se nápověda zobrazí a odečte se bod.</p>
+
+      <button id="hintBtn" class="btn-hint">Nápověda</button>
+
+      <div class="hint-counter">
+        <span>Použité nápovědy</span>
+        <div class="hint-dots" id="hintDots"></div>
+      </div>
+    </section>
+
+    <div id="hintDisplay" class="hint-text"></div>
+    <div id="scoreDisplay" class="score"></div>
+
+  </main>
+
+  <script>
+    const hints = [
+      "Není to klasická matematika, i když to tak na první pohled vypadá.",
+      "Nepotřebuješ češtinu ani žádná písmena.",
+      "Čísla nejsou výsledkem početní operace, ale spíš odkazy na něco jiného.",
+      "Pracuje se s číslicemi, ale ne jako s čísly — spíš jako s řetězcem znaků.",
+      "Je to založené na nějaké velmi známé nekonečné posloupnosti číslic.",
+      "Ta posloupnost je slavná konstanta, kterou zná každý ze školy.",
+      "Začíná to 3,14…",
+      "Obě zadaná čísla jsou v té posloupnosti schovaná jako šestimístné úseky.",
+      "Operace + a − neznamenají sčítání a odčítání, ale posun v té posloupnosti.",
+      "Znaménko + znamená posun doleva, − doprava. Najdi 288419 v π a posuň se o 3 pozice doprava."
+    ];
+
+    let hintsUsed = 0;
+    let solved = false;
+
+    const hintBtn = document.getElementById('hintBtn');
+    const hintDisplay = document.getElementById('hintDisplay');
+    const checkBtn = document.getElementById('check');
+    const answerInput = document.getElementById('answer');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const hintDots = document.getElementById('hintDots');
+
+    // Vytvoření 10 teček pro indikátor nápověd
+    for (let i = 0; i < hints.length; i++) {
+      const dot = document.createElement('span');
+      hintDots.appendChild(dot);
+    }
+    const dotEls = hintDots.querySelectorAll('span');
+
+    hintBtn.addEventListener('click', () => {
+      if (solved) return;
+      if (hintsUsed >= hints.length) {
+        alert('Všechny nápovědy už byly použity.');
+        return;
+      }
+
+      const confirmed = confirm(
+        'Opravdu chceš použít nápovědu?\n\n' +
+        'Použitím nápovědy ztratíš 1 bod ze svého skóre.'
+      );
+      if (!confirmed) return;
+
+      hintDisplay.textContent = hints[hintsUsed];
+      // Restart animace
+      hintDisplay.style.animation = 'none';
+      void hintDisplay.offsetWidth;
+      hintDisplay.style.animation = '';
+
+      dotEls[hintsUsed].classList.add('used');
+      hintsUsed++;
+
+      if (hintsUsed >= hints.length) {
+        hintBtn.disabled = true;
+        hintBtn.textContent = 'Nápověda (vyčerpáno)';
+      }
+    });
+
+    checkBtn.addEventListener('click', () => {
+      if (solved) return;
+      const answer = answerInput.value.trim();
+      if (answer === '419716') {
+        solved = true;
+        const score = Math.max(0, 10 - hintsUsed);
+        scoreDisplay.innerHTML = `<span class="big">${score} / 10</span>Správně! Získáváš ${score} bodů.`;
+        answerInput.disabled = true;
+        checkBtn.disabled = true;
+        hintBtn.disabled = true;
+      } else {
+        alert('Špatná odpověď, zkus to znovu.');
+      }
+    });
+  </script>
+
+</body>
+</html>
