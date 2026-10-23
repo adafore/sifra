@@ -98,6 +98,12 @@
       font-weight: 700;
     }
 
+    .task-title {
+      margin: 0 0 1rem;
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+
     /* --- Answer row --- */
     .answer-row {
       display: flex;
@@ -398,6 +404,19 @@
     <div id="hintDisplay" class="hint-text" aria-live="polite"></div>
     <div id="scoreDisplay" class="score" role="status"></div>
 
+    <section id="secondTask" class="puzzle-card" aria-labelledby="secondTaskTitle" hidden>
+      <h2 id="secondTaskTitle" class="task-title">2. úkol</h2>
+      <p class="puzzle">
+        288419 <span class="op">−</span> <span class="q">?</span> <span class="eq">=</span> 999999
+      </p>
+      <form id="secondAnswerForm" class="answer-row" novalidate>
+        <input type="text" id="secondAnswer" aria-label="Odpověď na 2. úkol" aria-describedby="secondAnswerFeedback" placeholder="Tvoje odpověď" autocomplete="off" inputmode="numeric">
+        <button type="submit" id="secondCheck" class="btn-primary">Zkontrolovat</button>
+      </form>
+      <p id="secondAnswerFeedback" class="answer-feedback" role="status"></p>
+      <div id="completionDisplay" class="score" role="status"></div>
+    </section>
+
   </main>
 
   <dialog id="hintDialog" class="hint-dialog" aria-labelledby="hintDialogTitle" aria-describedby="hintDialogDescription">
@@ -432,6 +451,7 @@
 
     let hintsUsed = 0;
     let solved = false;
+    let secondSolved = false;
 
     const hintBtn = document.getElementById('hintBtn');
     const hintDisplay = document.getElementById('hintDisplay');
@@ -447,6 +467,12 @@
     const cancelHint = document.getElementById('cancelHint');
     const answerForm = document.getElementById('answerForm');
     const answerFeedback = document.getElementById('answerFeedback');
+    const secondTask = document.getElementById('secondTask');
+    const secondAnswerForm = document.getElementById('secondAnswerForm');
+    const secondAnswerInput = document.getElementById('secondAnswer');
+    const secondCheckBtn = document.getElementById('secondCheck');
+    const secondAnswerFeedback = document.getElementById('secondAnswerFeedback');
+    const completionDisplay = document.getElementById('completionDisplay');
 
     // Vytvoření 10 teček pro indikátor nápověd
     for (let i = 0; i < hints.length; i++) {
@@ -521,13 +547,40 @@
         answerInput.disabled = true;
         checkBtn.disabled = true;
         hintBtn.disabled = true;
+        secondTask.hidden = false;
+        secondAnswerInput.focus({ preventScroll: true });
+        secondTask.scrollIntoView({ block: 'start' });
       } else {
         answerFeedback.textContent = answer ? 'Špatná odpověď, zkus to znovu.' : 'Nejprve napiš svoji odpověď.';
         answerInput.setAttribute('aria-invalid', 'true');
         answerInput.focus();
       }
     });
+
+    secondAnswerInput.addEventListener('input', () => {
+      secondAnswerFeedback.textContent = '';
+      secondAnswerInput.removeAttribute('aria-invalid');
+    });
+
+    secondAnswerForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!solved || secondSolved) return;
+      const answer = secondAnswerInput.value.trim();
+      // V číslicích π začíná 288419 na indexu 33 a 999999 na indexu 762.
+      // Znaménko − posouvá doprava: 762 − 33 = 729.
+      if (answer === '729') {
+        secondSolved = true;
+        completionDisplay.textContent = 'Gratulace! Vyřešil jsi oba úkoly! 🎉';
+        secondAnswerInput.disabled = true;
+        secondCheckBtn.disabled = true;
+      } else {
+        secondAnswerFeedback.textContent = answer ? 'Špatná odpověď, zkus to znovu.' : 'Nejprve napiš svoji odpověď.';
+        secondAnswerInput.setAttribute('aria-invalid', 'true');
+        secondAnswerInput.focus();
+      }
+    });
   </script>
 
 </body>
 </html>
+
