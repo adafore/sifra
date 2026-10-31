@@ -234,6 +234,18 @@
     }
 
     /* --- Hint display --- */
+    .hint-list {
+      display: grid;
+      gap: 0.75rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .hint-list:empty {
+      display: none;
+    }
+
     .hint-text {
       padding: 1rem 1.25rem;
       background: var(--hint-bg);
@@ -245,8 +257,11 @@
       animation: slideIn 0.35s ease both;
     }
 
-    .hint-text:empty {
-      display: none;
+    .hint-number {
+      display: block;
+      margin-bottom: 0.35rem;
+      color: var(--hint-border);
+      font-size: 0.82rem;
     }
 
     .hint-counter {
@@ -404,7 +419,7 @@
       <p><span class="dot"></span>Máš k dispozici celkem <strong>10 nápověd</strong>.</p>
       <p><span class="dot"></span>Za každou použitou nápovědu ztrácíš <strong>1 bod</strong>.</p>
       <p><span class="dot"></span>Maximální skóre je <strong>10 bodů</strong> (bez nápovědy). Pokud použiješ všech 10 nápověd, získáš <strong>0 bodů</strong>, ale stále můžeš úlohu vyřešit.</p>
-      <p><span class="dot"></span>Každou nápovědu odemkneš zadáním přístupového kódu. Teprve po zadání správného kódu a potvrzení se nápověda zobrazí a odečte se bod. Chybný kód ani zrušení nic nestojí.</p>
+      <p><span class="dot"></span>Přístupový kód stačí zadat <strong>jednou</strong>. Další nápovědy pak odkrýváš tlačítkem bez zadávání kódu, vždy za <strong>1 bod</strong>. Všechny odkryté nápovědy zůstávají vypsané a odemčení i postup se pamatují i po obnovení stránky. Chybný kód ani zrušení nic nestojí.</p>
 
       <button type="button" id="hintBtn" class="btn-hint" aria-haspopup="dialog" aria-controls="hintDialog">Nápověda</button>
 
@@ -414,7 +429,7 @@
       </div>
     </section>
 
-    <div id="hintDisplay" class="hint-text" aria-live="polite"></div>
+    <ol id="hintDisplay" class="hint-list" aria-label="Odkryté nápovědy" aria-live="polite" aria-relevant="additions"></ol>
     <div id="scoreDisplay" class="score" role="status"></div>
 
     <section id="secondTask" class="puzzle-card" aria-labelledby="secondTaskTitle" hidden>
@@ -434,8 +449,8 @@
 
   <dialog id="hintDialog" class="hint-dialog" aria-labelledby="hintDialogTitle" aria-describedby="hintDialogDescription">
     <form id="hintCodeForm" novalidate>
-      <h2 id="hintDialogTitle">Odemknout nápovědu</h2>
-      <p id="hintDialogDescription">Zadej přístupový kód pro zobrazení další nápovědy. Potvrzením použiješ jednu nápovědu a ztratíš <strong>1 bod</strong>.</p>
+      <h2 id="hintDialogTitle">Odemknout nápovědy</h2>
+      <p id="hintDialogDescription">Kód stačí zadat jednou. Potvrzením zobrazíš první nápovědu za <strong>1 bod</strong>. Další pak můžeš odkrývat tlačítkem bez opakovaného zadávání kódu.</p>
       <label for="hintCode">Přístupový kód</label>
       <div class="answer-row">
         <input type="password" id="hintCode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="Šestimístný kód" aria-describedby="codeError" autofocus>
@@ -464,6 +479,7 @@
 
     const STORAGE_KEY = 'sifra-progress-v1';
     let hintsUsed = 0;
+    let hintsUnlocked = false;
     let solved = false;
     let secondSolved = false;
 
@@ -498,7 +514,7 @@
     function saveProgress() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          version: 1, hintsUsed, solved, secondSolved
+          version: 1, hintsUsed, hintsUnlocked, solved, secondSolved
         }));
       } catch {
         // I bez dostupného úložiště zůstává hra funkční.
@@ -508,9 +524,21 @@
     function renderProgress() {
       dotEls.forEach((dot, index) => dot.classList.toggle('used', index < hintsUsed));
       hintCount.textContent = `Použité nápovědy: ${hintsUsed} / ${hints.length}`;
-      hintDisplay.textContent = hintsUsed > 0 ? hints[hintsUsed - 1] : '';
+      for (let index = hintDisplay.children.length; index < hintsUsed; index++) {
+        const item = document.createElement('li');
+        item.className = 'hint-text';
+        const number = document.createElement('strong');
+        number.className = 'hint-number';
+        number.textContent = `Nápověda ${index + 1}`;
+        item.append(number, document.createTextNode(hints[index]));
+        hintDisplay.appendChild(item);
+      }
       hintBtn.disabled = solved || hintsUsed >= hints.length;
-      hintBtn.textContent = hintsUsed >= hints.length ? 'Nápověda (vyčerpáno)' : 'Nápověda';
+      hintBtn.textContent = hintsUsed >= hints.length ? 'Nápověda (vyčerpáno)'
+        : hintsUnlocked ? 'Další nápověda (−1 bod)' : 'Nápověda';
+      hintBtn.setAttribute('aria-controls', hintsUnlocked ? 'hintDisplay' : 'hintDialog');
+      if (hintsUnlocked) hintBtn.removeAttribute('aria-haspopup');
+      else hintBtn.setAttribute('aria-haspopup', 'dialog');
       answerInput.disabled = solved;
       checkBtn.disabled = solved;
       secondTask.hidden = !solved;
@@ -537,6 +565,8 @@
         if (saved && saved.version === 1) {
           hintsUsed = Number.isInteger(saved.hintsUsed)
             ? Math.min(hints.length, Math.max(0, saved.hintsUsed)) : 0;
+          // Dříve použité nápovědy už vyžadovaly správný kód.
+          hintsUnlocked = saved.hintsUnlocked === true || hintsUsed > 0;
           solved = saved.solved === true;
           secondSolved = solved && saved.secondSolved === true;
         }
@@ -679,8 +709,19 @@
       if (document.hidden) stopConfetti();
     });
 
+    function revealNextHint() {
+      if (!hintsUnlocked || solved || hintsUsed >= hints.length) return;
+      hintsUsed++;
+      saveProgress();
+      renderProgress();
+    }
+
     hintBtn.addEventListener('click', () => {
       if (solved || hintsUsed >= hints.length || hintDialog.open) return;
+      if (hintsUnlocked) {
+        revealNextHint();
+        return;
+      }
       hintCodeForm.reset();
       codeError.textContent = '';
       hintCode.removeAttribute('aria-invalid');
@@ -711,15 +752,9 @@
         return;
       }
 
+      hintsUnlocked = true;
       hintDialog.close();
-
-      hintsUsed++;
-      saveProgress();
-      renderProgress();
-      // Restart animace
-      hintDisplay.style.animation = 'none';
-      void hintDisplay.offsetWidth;
-      hintDisplay.style.animation = '';
+      revealNextHint();
     });
 
     answerInput.addEventListener('input', () => {
@@ -771,4 +806,5 @@
 
 </body>
 </html>
+
 
